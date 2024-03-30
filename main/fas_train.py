@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from seg_model import *
 from torch import optim
 import os
@@ -9,7 +8,7 @@ from data_loaders.data_loader import MVTecTrainDataset
 from utils.utilts_func         import *
 from seg_model import *
 import subprocess
-from loss.loss import FocalLoss, SSIM
+from loss.loss import SSIM
 from loss.focal_loss import *
 from tqdm import tqdm
 
@@ -54,12 +53,12 @@ def train_on_device(args):
 
 
         loss_l2 = torch.nn.modules.loss.MSELoss()
-        loss_ssim = SSIM(args.train_gpu_id[0])
+        # loss_ssim = SSIM(args.train_gpu_id[0])
         #loss_focal = BinaryFocalLoss()
 
         ### dataset 
         dataset     = MVTecTrainDataset(f'{args.data_path}{class_name}/train/', args.anomaly_source_path, args.anom_choices, resize_shape=[256, 256],include_norm_imgs=1, datatype=f'{args.datatype}')
-        dataloader  = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=16) # 16
+        dataloader  = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=12) # 16
 
         n_iter = 0
 
@@ -70,7 +69,6 @@ def train_on_device(args):
         for epoch in tqdm(range(args.epochs)):
             
             for i_batch, sample_batched in enumerate(dataloader):
-
                 input_batch         = sample_batched["image"].cuda(cuda_id)
                 aug_batch           = sample_batched["augmented_image"].cuda(cuda_id)
                 groudtruth_mask     = sample_batched["anomaly_mask"].cuda(cuda_id)

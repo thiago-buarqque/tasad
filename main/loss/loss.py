@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from math import exp
 
 ###
+from main.utils.utilts_func import shape_equal
 from utils import *
 ###
 
@@ -38,6 +39,7 @@ class FocalLoss(nn.Module):
     def forward(self, logit, target):
         if self.apply_nonlin is not None:
             logit = self.apply_nonlin(logit)
+
         num_class = logit.shape[1]
 
         if logit.dim() > 2:
@@ -45,8 +47,10 @@ class FocalLoss(nn.Module):
             logit = logit.view(logit.size(0), logit.size(1), -1)
             logit = logit.permute(0, 2, 1).contiguous()
             logit = logit.view(-1, logit.size(-1))
+
         target = torch.squeeze(target, 1)
         target = target.view(-1, 1)
+
         alpha = self.alpha
 
         if alpha is None:
@@ -70,33 +74,40 @@ class FocalLoss(nn.Module):
 
         one_hot_key = torch.FloatTensor(target.size(0), num_class).zero_()
         one_hot_key = one_hot_key.scatter_(1, idx, 1)
+        
         if one_hot_key.device != logit.device:
             one_hot_key = one_hot_key.to(logit.device)
 
         if self.smooth:
             one_hot_key = torch.clamp(
                 one_hot_key, self.smooth / (num_class - 1), 1.0 - self.smooth)
+
         pt = (one_hot_key * logit).sum(1) + self.smooth
+        
         logpt = pt.log()
 
         gamma = self.gamma
 
         alpha = alpha[idx]
         alpha = torch.squeeze(alpha)
+        
         loss = -1 * alpha * torch.pow((1 - pt), gamma) * logpt
 
         if self.size_average:
             loss = loss.mean()
+
         return loss
+
 def gaussian(window_size, sigma):
     gauss = torch.Tensor([exp(-(x - window_size//2)**2/float(2*sigma**2)) for x in range(window_size)])
-    return gauss/gauss.sum()
+    
+    return gauss / gauss.sum()
 
 def create_window(window_size, channel=1):
     _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
     _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-    window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
-    return window
+    
+    return _2D_window.expand(channel, 1, window_size, window_size).contiguous()
 
 def ssim(img1, img2, window_size=11, window=None, size_average=True, full=False, val_range=None):
     if val_range is None:
@@ -114,7 +125,9 @@ def ssim(img1, img2, window_size=11, window=None, size_average=True, full=False,
         l = val_range
 
     padd = window_size//2
+    
     (_, channel, height, width) = img1.size()
+
     if window is None:
         real_size = min(window_size, height, width)
         window = create_window(real_size, channel=channel).to(img1.device)
@@ -183,4 +196,5 @@ class SSIM(torch.nn.Module):
             self.channel = channel
 
         s_score, ssim_map = ssim(img1, img2, window=window, window_size=self.window_size, size_average=self.size_average)
+        
         return 1.0 - s_score

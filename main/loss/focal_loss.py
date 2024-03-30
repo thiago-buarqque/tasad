@@ -51,6 +51,7 @@ class BinaryFocalLoss(nn.Module):
 
         pos_mask = (target == 1).float()
         neg_mask = (target == 0).float()
+        
         if valid_mask is not None:
             pos_mask = pos_mask * valid_mask
             neg_mask = neg_mask * valid_mask
@@ -59,10 +60,12 @@ class BinaryFocalLoss(nn.Module):
         pos_loss = -pos_weight * torch.log(prob)  # / (torch.sum(pos_weight) + 1e-4)
 
         neg_weight = (neg_mask * torch.pow(prob, self.gamma)).detach()
+        
         neg_loss = -self.alpha * neg_weight * F.logsigmoid(-output)  # / (torch.sum(neg_weight) + 1e-4)
+        
         loss = pos_loss + neg_loss
-        loss = loss.mean()
-        return loss
+        
+        return loss.mean()
 
 
 class FocalLoss_Ori(nn.Module):
@@ -86,6 +89,7 @@ class FocalLoss_Ori(nn.Module):
         self.smooth = 1e-4
         self.ignore_index = ignore_index
         self.alpha = alpha
+        
         if alpha is None:
             self.alpha = torch.ones(num_class, )
         elif isinstance(alpha, (int, float)):
@@ -115,14 +119,19 @@ class FocalLoss_Ori(nn.Module):
         N, C = logit.shape[:2]
         alpha = self.alpha.to(logit.device)
         prob = F.softmax(logit, dim=1)
+        
         if prob.dim() > 2:
             # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
             prob = prob.view(N, C, -1)
             prob = prob.transpose(1, 2).contiguous()  # [N,C,d1*d2..] -> [N,d1*d2..,C]
             prob = prob.view(-1, prob.size(-1))  # [N,d1*d2..,C]-> [N*d1*d2..,C]
+        
         ori_shp = target.shape
+        
         target = target.view(-1, 1)  # [N,d1,d2,...]->[N*d1*d2*...,1]
+        
         valid_mask = None
+        
         if self.ignore_index is not None:
             valid_mask = target != self.ignore_index
             target = target * valid_mask
@@ -130,18 +139,25 @@ class FocalLoss_Ori(nn.Module):
         # ----------memory saving way--------
         prob = prob.gather(1, target).view(-1) + self.smooth  # avoid nan
         logpt = torch.log(prob)
+        
         # alpha_class = alpha.gather(0, target.view(-1))
+        
         alpha_class = alpha[target.squeeze().long()]
+        
         class_weight = -alpha_class * torch.pow(torch.sub(1.0, prob), self.gamma)
+        
         loss = class_weight * logpt
+        
         if valid_mask is not None:
             loss = loss * valid_mask.squeeze()
 
         if self.reduction == 'mean':
             loss = loss.mean()
+            
             if valid_mask is not None:
                 loss = loss.sum() / valid_mask.sum()
         elif self.reduction == 'none':
             loss = loss.view(ori_shp)
+
         return loss
 

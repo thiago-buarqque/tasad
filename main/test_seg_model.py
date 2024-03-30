@@ -1,7 +1,4 @@
-from typing import final
 import torch
-from torch import greater
-import torch.nn.functional as F
 from data_loaders.data_loader_test import MVTecTestDataset
 from torch.utils.data import DataLoader
 import numpy as np
@@ -94,7 +91,7 @@ def test(obj_names, mvtec_path, checkpoint_path, base_model_name):
                 input_img_with_mask     =    (query_image_cv*255) + cv2.cvtColor(cas_fas_ouput_colr, cv2.cv2.COLOR_BGR2HSV)/255  '''
                 
                 all_imgs             =   [query_image_cv,  true_mask_cv, out_mask_cas, fas_input, out_mask_fas, cas_fas_ouput_n] 
-                img_names            =  '' #'[ "Query Image","Ground Truth Mask","Predicted Mask"]'
+                # img_names            =  '' #'[ "Query Image","Ground Truth Mask","Predicted Mask"]'
                 pred_result_save(all_imgs, save_res= True) #show_results= True)
 
                 #cv2.imwrite(f'./results_cutom/actual_{class_name}{i}.png',np.hstack((np.array((out_mask_cv/np/max(out_mask_cv))*255, dtype=np.uint8),np.array(true_mask_cv[:,:,0]*255, dtype=np.uint8))))
@@ -131,6 +128,7 @@ def test(obj_names, mvtec_path, checkpoint_path, base_model_name):
         obj_auroc_pixel_list.append(auroc_pixel)
         obj_auroc_image_list.append(auroc)
         obj_ap_image_list.append(ap)
+        
         print(class_name)
         print("AUC Pixel:  " +str(auroc_pixel))
         print("AP Pixel:  " +str(ap_pixel))
@@ -144,7 +142,6 @@ def test(obj_names, mvtec_path, checkpoint_path, base_model_name):
     print("AUC Pixel mean:  " + str(np.mean(obj_auroc_pixel_list)))
     print("AP Pixel mean:  " + str(np.mean(obj_ap_pixel_list)))
 
-  
 
 if __name__=="__main__":
     import argparse

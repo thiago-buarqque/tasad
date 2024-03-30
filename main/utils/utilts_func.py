@@ -4,15 +4,15 @@ import cv2
 from utils.utilts_custom_class import * 
 from scipy.ndimage import median_filter as med_filt
 import torch
-import torch.nn as nn
 from sklearn.metrics import roc_auc_score, precision_recall_fscore_support
-from skimage.segmentation import felzenszwalb, slic, quickshift, watershed
+from skimage.segmentation import slic
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import torch
-import torch.nn.functional as F
 from numpy import ndarray as NDArray
 from skimage import measure
-from sklearn.metrics import auc, roc_auc_score, roc_curve
+from sklearn.metrics import auc, roc_auc_score
 from tqdm import tqdm
 from statistics import mean
 import random

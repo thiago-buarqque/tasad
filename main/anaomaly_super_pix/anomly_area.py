@@ -7,22 +7,20 @@ class Anomaly_area():
     def __init__(self,img) -> None:
         self.resi_img = np.array(img)
 
-    
     def hist_threshold(self):
-
         counts, bins    =   np.histogram(self.resi_img,bins=np.max(self.resi_img))
         values          =   np.round(bins[1:])
         intens_count    =   dict()
 
         th_count     = np.percentile(counts, 97)
+
         for i in range(len(values)):
             if counts[i]<=th_count:
                 intens_count[int(values[i])] = 1
 
         return intens_count
 
-    def init_thresh(self,inten_count):
-        
+    def init_thresh(self,inten_count):        
         for i in range(self.resi_img.shape[0]):
             for j in range(self.resi_img.shape[1]):
                 if self.resi_img[i,j] in inten_count:
@@ -34,8 +32,8 @@ class Anomaly_area():
 
     def med_erosion_oper(self):
         uniq_v_find =   False
-        for filt_size in range(3,45,2):
 
+        for filt_size in range(3,45,2):
             kernel      = np.ones((filt_size,filt_size),np.uint8)
             erosion     = cv.erode(np.array(self.resi_img),kernel,iterations = 1)
             med_img     = ndimage.median_filter(erosion, size=filt_size)
@@ -43,6 +41,7 @@ class Anomaly_area():
             #kernel      = np.ones((filt_size,filt_size),np.uint8)
             #erosion     = cv.erode(np.array(med_img),kernel,iterations = 1)
             uniq_v      = np.unique(erosion)
+
             if len(uniq_v)<=30:
                 #plt.figure()
                 #plt.imshow(erosion)
@@ -50,9 +49,9 @@ class Anomaly_area():
                 uniq_v_find = True
 
                 break
+
         if uniq_v_find:
             pass
-
         else:
             med_img     = ndimage.median_filter(self.resi_img, size=45)
             kernel      = np.ones((45,45),np.uint8)
@@ -97,7 +96,6 @@ class Anomaly_area():
                     else:
                         if count_occ[i]>=30 and count_occ[i]<=900: 
                             gray_values_th.append(uniq_v[j])
-                    
             else:
                 if count_occ[i]>=30 and count_occ[i]<=900: 
                     gray_values_th.append(uniq_v[index[0]])
@@ -115,6 +113,7 @@ class Anomaly_area():
                     eroded_img[i,j] = 255
                 else:
                     eroded_img[i,j] = 0
+
         med_img_res     = ndimage.median_filter(eroded_img, size=3)
 
         return med_img_res
