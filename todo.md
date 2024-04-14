@@ -12,5 +12,5 @@
 
 # Results
 
-- [ ] How what I proposed improve their method?
+- [ ] How did my proposal improve their method?
 - [ ] Compare code performance
