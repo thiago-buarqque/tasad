@@ -35,10 +35,10 @@
     - download the texture dataset put inside anomaly source image 
         - https://www.robots.ox.ac.uk/~vgg/data/dtd/
 # cas training 
-    python ./main/cas_train.py --gpu_id 0 --gpu_id_validation 0 --obj_id -1 --lr 0.001 --bs 2 --epochs 100 --data_path ./data/images/ --anomaly_source_path ./data/anomaly/images/ --checkpoint_path ./test_weights/ --log_path ./logs/ --checkpoint_cas_model "" --visualize True --class_name hazelnut --best_model_save_path ./best_weights_model_1/
+    python ./main/cas_train.py --gpu_id 0 --gpu_id_validation 0 --obj_id -1 --lr 0.001 --bs 2 --epochs 1000 --data_path ./data/images/ --anomaly_source_path ./data/anomaly/images/ --checkpoint_path ./test_weights/ --log_path ./logs/ --checkpoint_cas_model "" --visualize True --class_name hazelnut --best_model_save_path ./best_weights_model_1/
 
 # fas training 
-    python ./main/fas_train.py --train_gpu_id 0 --val_gpu_id 0 --obj_id -1 --lr 0.001 --bs 2 --epochs 100 --data_path ./data/images/ --anomaly_source_path ./data/anomaly/images/ --cas_model_path ./test_weights/ --checkpoint_path ./checkpoints/ --log_path ./logs/ --checkpoint_cas_weights ./test_weights/cas_seg_model_weights_mvtech_ --checkpoint_fas_weights ./test_weights/fas_seg_model_weights_mvtech_ --visualize True --class_name hazelnut --datatype png
+    python ./main/fas_train.py --train_gpu_id 0 --val_gpu_id 0 --obj_id -1 --lr 0.001 --bs 2 --epochs 1000 --data_path ./data/images/ --anomaly_source_path ./data/anomaly/images/ --cas_model_path ./test_weights/ --checkpoint_path ./checkpoints/ --log_path ./logs/ --checkpoint_cas_weights ./test_weights/cas_seg_model_weights_mvtech_ --checkpoint_fas_weights ./test_weights/fas_seg_model_weights_mvtech_ --visualize True --class_name hazelnut --datatype png
 
 ##### ----- #### 
 Thanks DRAEM - A Discriminatively Trained Reconstruction Embedding for Surface Anomaly Detection ---> https://github.com/VitjanZ/DRAEM for providing their code and model weights  

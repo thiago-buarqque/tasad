@@ -28,9 +28,9 @@ class Encoder(nn.Module):
     def __init__(self, in_channels, base_width):
         super(Encoder, self).__init__()
 
-        self.cbam1 = CBAM(channel=base_width)
-        self.cbam2 = CBAM(channel=base_width*2)
-        self.cbam3 = CBAM(channel=base_width*4)
+        # self.cbam1 = CBAM(channel=base_width)
+        # self.cbam2 = CBAM(channel=base_width*2)
+        # self.cbam3 = CBAM(channel=base_width*4)
         
         self.block1 = nn.Sequential(
             nn.Conv2d(in_channels, base_width,kernel_size=3, padding=1),
@@ -62,13 +62,13 @@ class Encoder(nn.Module):
     
     def forward(self,x):
         b1 = self.block1(x)
-        b1 = self.cbam1(b1)  # Apply CBAM after block1
+        # b1 = self.cbam1(b1)  # Apply CBAM after block1
         mp1 = self.mp1(b1)
         b2 = self.block2(mp1)
-        b2 = self.cbam2(b2)  # Apply CBAM after block2
+        # b2 = self.cbam2(b2)  # Apply CBAM after block2
         mp2 = self.mp2(b2)
         b3 = self.block3(mp2)
-        b3 = self.cbam3(b3)  # Apply CBAM after block3
+        # b3 = self.cbam3(b3)  # Apply CBAM after block3
         return b3
 
 

@@ -1,5 +1,5 @@
 import torch
-from main.test_seg_model import test_seg_model
+from test_seg_model import test_seg_model
 from seg_model import *
 from torch import optim
 from loss.loss import SSIM
@@ -96,14 +96,14 @@ def train_on_device(args):
             # It's so weird that the model is evaluated after n batches.
             # It should be after every epoch and with a validation set.
             if args.visualize:
-                # visualizer.plot_loss(l2_loss, n_iter, loss_name='l2_loss')
-                #visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
-                #visualizer.plot_loss(segment_loss, n_iter, loss_name='segment_loss')               
+                visualizer.plot_loss(l2_loss, n_iter, loss_name='l2_loss')
+                visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
+                # visualizer.plot_loss(segment_loss, n_iter, loss_name='segment_loss')               
 
-                # visualizer.visualize_image_batch(train_batch, n_iter, image_name='batch_input')
-                # visualizer.visualize_image_batch(aug_train_batch, n_iter, image_name='batch_augmented')
-                # visualizer.visualize_image_batch(anomaly_mask_batch, n_iter, image_name='ground_truth')
-                # visualizer.visualize_image_batch(prediction, n_iter, image_name='out_pred')
+                visualizer.visualize_image_batch(train_batch, n_iter, image_name='batch_input')
+                visualizer.visualize_image_batch(aug_train_batch, n_iter, image_name='batch_augmented')
+                visualizer.visualize_image_batch(anomaly_mask_batch, n_iter, image_name='ground_truth')
+                visualizer.visualize_image_batch(prediction, n_iter, image_name='out_pred')
 
                 torch.save(cas_model.state_dict(), os.path.join(args.checkpoint_path, f"{wght_file_name}.pckl"))
 
@@ -113,8 +113,9 @@ def train_on_device(args):
                         class_name,
                         args.data_path,
                         epoch,
-                        args.val_gpu_id,
-                        None
+                        args.gpu_id,
+                        None,
+                        visualizer
                     )
                     # results_val             = subprocess.check_output(f'python3 ./main/test_seg_model.py --gpu_id {args.gpu_id_validation} --model_name  {wght_file_name} --data_path {args.data_path} --checkpoint_path {args.checkpoint_path} --both_model 0 --obj_list_all {class_name}', shell=True)
                     # results_val             = decode_output(results_val)
@@ -134,9 +135,8 @@ def train_on_device(args):
                     
                     # print(f"Test for epoch {epoch}: Class {results_val[7]} Pixel AP {curr_pixel_ap:.2f} Pixel AUC {curr_pixel_auc:.2f} Image AUC {curr_image_auc:.2f}")
 
-                except:
-                    model_path = os.path.join(f"{wght_file_name}.pckl")
-                    print(f"An error has occured! Saving model checkpoint at: {model_path}")
+                except Exception as e:
+                    print(e)
                     
                     # torch.save(cas_model.state_dict(), os.path.join(args.checkpoint_path, model_path))
 

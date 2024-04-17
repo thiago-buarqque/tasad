@@ -4,11 +4,13 @@ from torch.utils.data import DataLoader
 import numpy as np
 from sklearn.metrics import roc_auc_score, average_precision_score
 import matplotlib.pyplot as plt 
+from utils.tensorboard_visualizer import TensorboardVisualizer
 from utils.utilts_custom_class import *
 from utils.utilts_func         import *
 import cv2
 from seg_model import *
 from typing import Union
+from datetime import datetime
 
 
 def test_seg_model(
@@ -17,7 +19,8 @@ def test_seg_model(
     data_path: str,
     epoch: int,
     gpu_id,
-    fas_model: Union[Seg_Network, None] = None):
+    fas_model: Union[Seg_Network, None] = None,
+    visualizer: TensorboardVisualizer = None):
     
     obj_ap_pixel_list = []
     obj_auroc_pixel_list = []
@@ -137,14 +140,20 @@ def test_seg_model(
     obj_auroc_pixel_list.append(auroc_pixel)
     obj_auroc_image_list.append(auroc)
     obj_ap_image_list.append(ap)
+        
+    if visualizer:
+        visualizer.plot_performance(score_val=ap_pixel, n_iter=epoch, metric_name="T_AP_pixel")
+        visualizer.plot_performance(score_val=auroc_pixel, n_iter=epoch, metric_name="T_AUROC_pixel")
+        visualizer.plot_performance(score_val=auroc, n_iter=epoch, metric_name="T_AUROC")
+        visualizer.plot_performance(score_val=ap, n_iter=epoch, metric_name="T_AP")
     
     # print(class_name)
     # print("AUC Pixel:  " +str(auroc_pixel))
     # print("AP Pixel:  " +str(ap_pixel))
     # print("AUC Image:  " +str(auroc))
     # print("AP Image:  " +str(ap))
-    # print("==============================")
-    print(f"Test for epoch {epoch}: Class {class_name} Pixel AP {ap_pixel:.2f} Pixel AUC {auroc_pixel:.2f} Image AUC {auroc:.2f} Image AP {ap:.2f}")               
+    # print("==============================")  
+    print(f"{datetime.now()} Test for epoch {epoch}: Class {class_name} Pixel AP {ap_pixel:.2f} Pixel AUC {auroc_pixel:.2f} Image AUC {auroc:.2f} Image AP {ap:.2f}")
 
     
     # print("AUC Image mean:  " + str(np.mean(obj_auroc_image_list)))

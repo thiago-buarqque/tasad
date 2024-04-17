@@ -112,16 +112,16 @@ def train_on_device(args):
             torch.save(fas_model.state_dict(), os.path.join('./test_weights/', f"{base_model_name}{class_name}.pckl"))
             
             if args.visualize:
-                # visualizer.plot_loss(l2_loss, n_iter, loss_name='l2_loss')
-                #visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
-                #visualizer.plot_loss(segment_loss, n_iter, loss_name='focal_loss') 
+                visualizer.plot_loss(l2_loss, n_iter, loss_name='l2_loss')
+                # visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
+                # visualizer.plot_loss(segment_loss, n_iter, loss_name='focal_loss')
                 
-                # visualizer.visualize_image_batch(input_batch, n_iter, image_name='input_batch')
-                # visualizer.visualize_image_batch(aug_batch, n_iter, image_name='cas_input')
-                # visualizer.visualize_image_batch(groudtruth_mask, n_iter, image_name='mask_target')
-                # visualizer.visualize_image_batch(cas_output, n_iter, image_name='out_cas')
-                # visualizer.visualize_image_batch(input_batch_fas, n_iter, image_name='fas_input')
-                # visualizer.visualize_image_batch(fas_output, n_iter, image_name='out_fas')
+                visualizer.visualize_image_batch(input_batch, n_iter, image_name='input_batch')
+                visualizer.visualize_image_batch(aug_batch, n_iter, image_name='cas_input')
+                visualizer.visualize_image_batch(groudtruth_mask, n_iter, image_name='mask_target')
+                visualizer.visualize_image_batch(cas_output, n_iter, image_name='out_cas')
+                visualizer.visualize_image_batch(input_batch_fas, n_iter, image_name='fas_input')
+                visualizer.visualize_image_batch(fas_output, n_iter, image_name='out_fas')
                 
                 # The model is being loaded twice in memory, could just pass it to the test_seg_model_class
                 try:
@@ -131,7 +131,8 @@ def train_on_device(args):
                         args.data_path,
                         epoch,
                         args.val_gpu_id,
-                        fas_model
+                        fas_model,
+                        visualizer
                     )
                     # results_val             = subprocess.check_output(f'python3 ./main/test_seg_model.py --gpu_id {args.val_gpu_id} --model_name {cas_model_name}{class_name} --data_path {args.data_path} --checkpoint_path {args.cas_model_path} --both_model 1 --obj_list_all {class_name}', shell=True)
                     # results_val             = decode_output(results_val)
@@ -150,7 +151,6 @@ def train_on_device(args):
                     # print(f"Test for epoch {epoch}: Class {results_val[7]} Pixel AP {curr_pixel_ap:.2f} Pixel AUC {curr_pixel_auc:.2f} Image AUC {curr_image_auc:.2f}")               
 
                 except Exception as e:
-                    model_path = os.path.join(f"{base_model_name}.pckl")
                     print(e)
 
                 n_iter +=1
