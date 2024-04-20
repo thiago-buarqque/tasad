@@ -11,7 +11,8 @@ from utils.perlin import rand_perlin_2d_np
 from skimage.segmentation import slic
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
-
+from progressbar import Bar, DynamicMessage, ProgressBar, Percentage, GranularBar, \
+    Timer, ETA, Counter
 
 class DataProcessor(Dataset):
 
@@ -241,16 +242,36 @@ class DataProcessor(Dataset):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path) 
             
-        image_transposed = image.transpose(1, 2, 0) / 255.0
+        image_transposed = image.transpose(1, 2, 0)
+        
+        if image_transposed.max() > 1.0:
+            image_transposed = image_transposed.astype(np.float32) / 255.0
 
-        plt.imshow(image_transposed)
-        plt.axis('off')
-            
-        plt.savefig(file_path, bbox_inches='tight', pad_inches=0)
-        plt.close()
+        fig, ax = plt.subplots()
+        fig.patch.set_facecolor('black')
+        ax.set_facecolor('black')
 
-    # TODO: I think it could return the same image more than once
-    def __getitem__(self, idx):
+        # Display the image
+        if image_transposed.shape[2] == 1:
+            image_transposed = np.repeat(image.squeeze(), 3).reshape((image_transposed.shape[0], image_transposed.shape[1], 3))
+            # image_squeezed = np.squeeze(image_transposed)
+            # ax.imshow(image_squeezed, cmap='gray', vmin=0.0, vmax=1.0)
+
+        ax.imshow(image_transposed)
+
+        # Turn off the axes
+        ax.axis('off')
+
+        # Save the figure
+        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, facecolor='black', dpi=300, transparent=False)
+
+        # Close the plot to free memory
+        plt.close(fig)
+
+    def __len__(self):
+        return len(self.image_paths)
+    
+    def process_image(self, idx):
         # idx = torch.randint(0, len(self.image_paths), (1,)).item()
         anomaly_idx = torch.randint(0, len(self.anomaly_source_paths), (1,)).item()
         
@@ -260,7 +281,9 @@ class DataProcessor(Dataset):
         image, augmented_image, anomaly_mask, has_anomaly = \
             self.transform_image(path, anomaly_path)
 
-        self.__save_image(image, path)
+        self.__save_image(image, path, path_prefix="./processed_data/original")
+
+        # if has_anomaly == 1.0:
         self.__save_image(augmented_image, path, path_prefix="./processed_data/augmented")
         self.__save_image(anomaly_mask, path, path_prefix="./processed_data/anomaly")
 
@@ -284,20 +307,27 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    dataset = \
-        DataProcessor(
-            args.data_path + args.class_name[0] + '/train',
-            args.anomaly_source_path, 
-            resize_shape=[256, 256]
-        )
-        
-    import time
+    def process_image(data_processor, index):
+        data_processor.process_image(index)
 
-    start_time = time.time()
+    widgets = [
+                DynamicMessage('epoch'),
+                Bar(marker='=', left='[', right=']'),
+        ' ',  ETA(),
+    ]
 
-    # Your code to measure here
-    dataset[0]['image']
+    for class_name in args.class_name[0].split(","):
+        dataset = \
+            DataProcessor(
+                args.data_path + class_name + '/train',
+                args.anomaly_source_path, 
+                resize_shape=[256, 256]
+            )
+            
+        with ProgressBar(widgets=widgets, max_value=dataset.__len__()) as progress_bar:
+            for i in range(dataset.__len__()):
+                dataset.process_image(i)
 
-    end_time = time.time()
-    
-    print(end_time - start_time)
+                progress_bar.update(
+                        i,
+                        epoch=f"({i}/{dataset.__len__()}) Class {class_name} ")

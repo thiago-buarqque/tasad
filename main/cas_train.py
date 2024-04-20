@@ -16,7 +16,7 @@ from progressbar import Bar, DynamicMessage, ProgressBar, Percentage, GranularBa
     Timer, ETA, Counter
 
 ### gloabal variables ----- arg
-lr      = 0.0001
+# lr      = 0.0001
 #pochs  = 800
 ###
 
@@ -58,17 +58,17 @@ def train_on_device(args):
         dataloader      = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=12) # 16
 
         n_iter          = 0
-        # prev_pixel_ap   = 0
-        # prev_pixel_auc  = 0
-        # prev_image_auc  = 0
 
         for epoch in range(args.epochs):            
             sum_loss = 0
+
             widgets = [
                       DynamicMessage('epoch'),
                       Bar(marker='=', left='[', right=']'),
-                ' ',  ETA(),
+                      ' ',
+                      ETA(),
             ]
+
             with ProgressBar(widgets=widgets, max_value=len(dataloader)) as progress_bar:
                 for i_batch, batch in enumerate(dataloader):
 
@@ -86,24 +86,23 @@ def train_on_device(args):
                     sum_loss += loss
 
                     optimizer.zero_grad()
+
                     loss.backward()
+
                     optimizer.step()
                     
                     progress_bar.update(
                         i_batch, 
                         epoch=f"({epoch}) Train loss: {(sum_loss / (i_batch + 1)):.2f}: Class {class_name} ")
 
-            # It's so weird that the model is evaluated after n batches.
-            # It should be after every epoch and with a validation set.
             if args.visualize:
-                visualizer.plot_loss(l2_loss, n_iter, loss_name='l2_loss')
-                visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
-                # visualizer.plot_loss(segment_loss, n_iter, loss_name='segment_loss')               
+                visualizer.plot_loss(l2_loss, n_iter, loss_name='cas_l2_loss')
+                visualizer.plot_loss(ssim_loss, n_iter, loss_name='cas_ssim_loss')
 
-                visualizer.visualize_image_batch(train_batch, n_iter, image_name='batch_input')
-                visualizer.visualize_image_batch(aug_train_batch, n_iter, image_name='batch_augmented')
-                visualizer.visualize_image_batch(anomaly_mask_batch, n_iter, image_name='ground_truth')
-                visualizer.visualize_image_batch(prediction, n_iter, image_name='out_pred')
+                visualizer.visualize_image_batch(train_batch, n_iter, image_name='cas_sample_input')
+                visualizer.visualize_image_batch(aug_train_batch, n_iter, image_name='cas_sample_augmented')
+                visualizer.visualize_image_batch(anomaly_mask_batch, n_iter, image_name='cas_sample_gt')
+                visualizer.visualize_image_batch(prediction, n_iter, image_name='cas_out_pred')
 
                 torch.save(cas_model.state_dict(), os.path.join(args.checkpoint_path, f"{wght_file_name}.pckl"))
 
@@ -117,28 +116,9 @@ def train_on_device(args):
                         None,
                         visualizer
                     )
-                    # results_val             = subprocess.check_output(f'python3 ./main/test_seg_model.py --gpu_id {args.gpu_id_validation} --model_name  {wght_file_name} --data_path {args.data_path} --checkpoint_path {args.checkpoint_path} --both_model 0 --obj_list_all {class_name}', shell=True)
-                    # results_val             = decode_output(results_val)
-                    # curr_pixel_ap,indx      = find_values(results_val, 'AP')
-                    # curr_pixel_auc,_        = find_values(results_val, 'AUC')
-                    # curr_image_auc,_        = find_values(results_val[indx:], 'AUC')
-
-                    # if ((curr_pixel_auc+curr_pixel_ap+curr_image_auc)/3)>=((prev_pixel_ap+prev_pixel_auc+prev_image_auc)/3):
-                    #     torch.save(cas_model.state_dict(), os.path.join(f"{args.best_model_save_path}", wght_file_name+".pckl"))
-                    #     prev_pixel_ap           = curr_pixel_ap
-                    #     prev_pixel_auc          = curr_pixel_auc
-                    #     prev_image_auc          = curr_image_auc
-                        
-                    #     print("Saved pix AP value               :  ", prev_pixel_ap)
-                    #     print("Saved pix AUC value              :  ", prev_pixel_auc)
-                    #     print("Saved img UC value               :  ", prev_image_auc)
-                    
-                    # print(f"Test for epoch {epoch}: Class {results_val[7]} Pixel AP {curr_pixel_ap:.2f} Pixel AUC {curr_pixel_auc:.2f} Image AUC {curr_image_auc:.2f}")
 
                 except Exception as e:
                     print(e)
-                    
-                    # torch.save(cas_model.state_dict(), os.path.join(args.checkpoint_path, model_path))
 
             n_iter +=1
 

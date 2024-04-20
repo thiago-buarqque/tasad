@@ -42,17 +42,18 @@ class MVTecTrainDataset(Dataset):
         
         self.anomaly_type = anom_choices        
        
-        self.augmenters = [iaa.GammaContrast((0.5,2.0),per_channel=True), ## per_channel to handle tghe bightness effect
-                      iaa.MultiplyAndAddToBrightness(mul=(0.8,1.2),add=(-30,30)), ### brightness mult+ add
-                      iaa.pillike.EnhanceSharpness(), ## randomly increase or decrease sharpness
-                      #iaa.AddToHueAndSaturation((-50,50),per_channel=True), ## add values in between rnage to hue and saturation 
-                      #iaa.Solarize(0.5, threshold=(32,128)), ### invert color for threshold range (50%) randomly (omit)
-                      # iaa.Posterize(), ### quantize the range of color (omit)
-                      #iaa.Invert(), ### invert color 
-                      iaa.pillike.Autocontrast(),
-                      # iaa.pillike.Equalize(), # can omit 
-                      # iaa.Affine(rotate=(-45, 45)) ## omit , not suitable for video 
-                      ]
+        self.augmenters = [
+                iaa.GammaContrast((0.5,2.0),per_channel=True), ## per_channel to handle tghe bightness effect
+                iaa.MultiplyAndAddToBrightness(mul=(0.8,1.2),add=(-30,30)), ### brightness mult+ add
+                iaa.pillike.EnhanceSharpness(), ## randomly increase or decrease sharpness
+                #iaa.AddToHueAndSaturation((-50,50),per_channel=True), ## add values in between rnage to hue and saturation 
+                #iaa.Solarize(0.5, threshold=(32,128)), ### invert color for threshold range (50%) randomly (omit)
+                # iaa.Posterize(), ### quantize the range of color (omit)
+                #iaa.Invert(), ### invert color 
+                iaa.pillike.Autocontrast(),
+                # iaa.pillike.Equalize(), # can omit 
+                # iaa.Affine(rotate=(-45, 45)) ## omit , not suitable for video 
+            ]
 
         # self.rot = iaa.Sequential([iaa.Affine(rotate=(-90, 90))]) ## omit 
 

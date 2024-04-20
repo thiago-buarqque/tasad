@@ -6,6 +6,7 @@ from math import exp
 
 ###
 # from main.utils.utilts_func import shape_equal
+from utils.utilts_func import shape_equal
 from utils import *
 ###
 

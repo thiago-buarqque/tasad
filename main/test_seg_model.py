@@ -141,7 +141,7 @@ def test_seg_model(
     obj_auroc_image_list.append(auroc)
     obj_ap_image_list.append(ap)
         
-    if visualizer:
+    if visualizer != None:
         visualizer.plot_performance(score_val=ap_pixel, n_iter=epoch, metric_name="T_AP_pixel")
         visualizer.plot_performance(score_val=auroc_pixel, n_iter=epoch, metric_name="T_AUROC_pixel")
         visualizer.plot_performance(score_val=auroc, n_iter=epoch, metric_name="T_AUROC")

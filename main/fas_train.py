@@ -116,9 +116,9 @@ def train_on_device(args):
                 # visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
                 # visualizer.plot_loss(segment_loss, n_iter, loss_name='focal_loss')
                 
-                visualizer.visualize_image_batch(input_batch, n_iter, image_name='input_batch')
+                visualizer.visualize_image_batch(input_batch, n_iter, image_name='fas_input_batch')
                 visualizer.visualize_image_batch(aug_batch, n_iter, image_name='cas_input')
-                visualizer.visualize_image_batch(groudtruth_mask, n_iter, image_name='mask_target')
+                visualizer.visualize_image_batch(groudtruth_mask, n_iter, image_name='fas_mask_target')
                 visualizer.visualize_image_batch(cas_output, n_iter, image_name='out_cas')
                 visualizer.visualize_image_batch(input_batch_fas, n_iter, image_name='fas_input')
                 visualizer.visualize_image_batch(fas_output, n_iter, image_name='out_fas')
