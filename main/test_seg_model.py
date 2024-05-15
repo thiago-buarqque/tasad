@@ -142,24 +142,15 @@ def test_seg_model(
     obj_ap_image_list.append(ap)
         
     if visualizer != None:
-        visualizer.plot_performance(score_val=ap_pixel, n_iter=epoch, metric_name="T_AP_pixel")
-        visualizer.plot_performance(score_val=auroc_pixel, n_iter=epoch, metric_name="T_AUROC_pixel")
-        visualizer.plot_performance(score_val=auroc, n_iter=epoch, metric_name="T_AUROC")
-        visualizer.plot_performance(score_val=ap, n_iter=epoch, metric_name="T_AP")
+        prefix = "fas" if fas_model != None else "cas"
+        visualizer.plot_performance(score_val=ap_pixel, n_iter=epoch, metric_name=f"{prefix}_T_AP_pixel")
+        visualizer.plot_performance(score_val=auroc_pixel, n_iter=epoch, metric_name=f"{prefix}_T_AUROC_pixel")
+        visualizer.plot_performance(score_val=auroc, n_iter=epoch, metric_name=f"{prefix}_T_AUROC")
+        visualizer.plot_performance(score_val=ap, n_iter=epoch, metric_name=f"{prefix}_T_AP")
     
-    # print(class_name)
-    # print("AUC Pixel:  " +str(auroc_pixel))
-    # print("AP Pixel:  " +str(ap_pixel))
-    # print("AUC Image:  " +str(auroc))
-    # print("AP Image:  " +str(ap))
-    # print("==============================")  
     print(f"{datetime.now()} Test for epoch {epoch}: Class {class_name} Pixel AP {ap_pixel:.2f} Pixel AUC {auroc_pixel:.2f} Image AUC {auroc:.2f} Image AP {ap:.2f}")
-
     
-    # print("AUC Image mean:  " + str(np.mean(obj_auroc_image_list)))
-    # print("AP Image mean:  " + str(np.mean(obj_ap_image_list)))
-    # print("AUC Pixel mean:  " + str(np.mean(obj_auroc_pixel_list)))
-    # print("AP Pixel mean:  " + str(np.mean(obj_ap_pixel_list)))
+    return ap, ap_pixel, auroc, auroc_pixel
 
 
 if __name__=="__main__":

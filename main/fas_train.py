@@ -10,7 +10,9 @@ from utils.utilts_func         import *
 from seg_model import *
 # from loss.loss import SSIM
 from loss.focal_loss import *
+from loss.loss import SSIM
 from tqdm import tqdm
+import time
 from progressbar import Bar, DynamicMessage, ProgressBar, ETA
 
 def train_on_device(args):
@@ -22,9 +24,8 @@ def train_on_device(args):
         os.makedirs(args.log_path)
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     #CUDA_LAUNCH_BLOCKING=1
-    
-    for class_name in args.class_name:
-        
+
+    for class_name in args.class_name[0].replace("['", "").replace("']", "").split(","):
         args.train_gpu_id   =  ','.join([str(i) for i in args.train_gpu_id])
         cuda_map            =  f'cuda:{args.train_gpu_id}'
         cuda_id             =  torch.device(cuda_map) 
@@ -32,19 +33,19 @@ def train_on_device(args):
 
         visualizer      = TensorboardVisualizer(log_dir=os.path.join(args.log_path, base_model_name+class_name+ "/"))    
         ### cas model
-        cas_model       = Seg_Network(in_channels=3, out_channels=1)
-        cas_par         = Seg_Network.get_n_params(cas_model)/1000000 
+        # cas_model       = Seg_Network(in_channels=3, out_channels=1)
+        # cas_par         = Seg_Network.get_n_params(cas_model)/1000000 
         
-        print("Number of Parmeters of CAS model: ", cas_par, " million")
+        # print("Number of Parameters of CAS model: ", cas_par, " million")
         
-        cas_model.cuda(cuda_id)
-        cas_model.load_state_dict(torch.load(f'{args.checkpoint_cas_weights}{class_name}.pckl', map_location=f'{cuda_map}'))
+        # cas_model.cuda(cuda_id)
+        # cas_model.load_state_dict(torch.load(f'{args.checkpoint_cas_weights}{class_name}.pckl', map_location=f'{cuda_map}'))
         
         ### fas model
         fas_model       = Seg_Network(in_channels=3, out_channels=1)
         fas_par         = Seg_Network.get_n_params(fas_model)/1000000 
         
-        print("Number of Parmeters of FAS model:", fas_par, " million")
+        print("Number of Parameters of FAS model:", fas_par, " million")
         
         fas_model.cuda(cuda_id)
         
@@ -59,103 +60,132 @@ def train_on_device(args):
 
 
         loss_l2 = torch.nn.modules.loss.MSELoss()
-        # loss_ssim = SSIM(args.train_gpu_id[0])
+        loss_ssim = SSIM(args.train_gpu_id)
         #loss_focal = BinaryFocalLoss()
 
         ### dataset 
         dataset     = MVTecTrainDataset(f'{args.data_path}{class_name}/train/', args.anomaly_source_path, args.anom_choices, resize_shape=[256, 256],include_norm_imgs=1, datatype=f'{args.datatype}')
         dataloader  = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=12) # 16
 
-        n_iter = 0
+        # last_best_loss = 1e10
+        # last_best_epoch = 1
 
-        # best_pix_ap      = 0
-        # best_pix_auc  = 0
-        # best_img_auc = 0
-        #f_los  = FocalLoss(gamma=2)
         for epoch in tqdm(range(args.epochs)):
             
             sum_loss = 0
+            sum_ssim_loss = 0
+            sum_l2_loss = 0
+
             widgets = [
                       DynamicMessage('epoch'),
                       Bar(marker='=', left='[', right=']'),
                 ' ',  ETA(),
             ]
             with ProgressBar(widgets=widgets, max_value=len(dataloader)) as progress_bar:
+                # time_batches = []
+                # time_evals = []
+                # time_backward = []
+                # time_losses = []
                 for i_batch, sample_batched in enumerate(dataloader):
-                    input_batch         = sample_batched["image"].cuda(cuda_id)
+                    # start_batch = time.time()
+                    # input_batch         = sample_batched["image"].cuda(cuda_id)
                     aug_batch           = sample_batched["augmented_image"].cuda(cuda_id)
                     groudtruth_mask     = sample_batched["anomaly_mask"].cuda(cuda_id)
 
-                    cas_output          = cas_model(aug_batch)
-                    input_batch_fas     = torch.tensor(seg_module(aug_batch,cas_output,th_pix=1, th_val=0)).cuda(cuda_id)
-                    fas_output          = fas_model(input_batch_fas)
+                    # cas_output          = cas_model(aug_batch)
+                    # input_batch_fas     = torch.tensor(seg_module(aug_batch,cas_output,th_pix=1, th_val=0)).cuda(cuda_id)
+                    # start_eval = time.time()
+                    fas_output          = fas_model(aug_batch)
+                    
+                    # end_eval = time.time()
+                    # time_evals.append(end_eval - start_eval)
 
+                    # start_loss = time.time()
                     l2_loss             = loss_l2(fas_output,groudtruth_mask)
-                    #ssim_loss           = loss_ssim(fas_output, groudtruth_mask)
+                    
+                    sum_l2_loss += l2_loss
+                    
+                    ssim_loss           = loss_ssim(fas_output, groudtruth_mask)
+                    
+                    sum_ssim_loss += ssim_loss
+                    
                     #segment_loss        = loss_focal(fas_output, groudtruth_mask) 
-                    loss                = l2_loss  #+ ssim_loss #+ segment_loss
-
+                    # loss                = l2_loss  #+ ssim_loss #+ segment_loss
+                    loss = l2_loss + ssim_loss
+                    
                     sum_loss += loss
+                    # end_loss = time.time()
+                    
+                    # time_losses.append(end_loss - start_loss)
 
+                    # start_backward = time.time()
                     optimizer.zero_grad()
                     
                     loss.backward()
                     
                     optimizer.step()
                     
+                    # end_backward = time.time()
+                    
+                    # time_backward.append(end_backward - start_backward)
+                    
+                    # end_batch = time.time()
+                    
+                    # time_batches.append(end_batch - start_batch)
+                    
                     progress_bar.update(
                         i_batch, 
-                        epoch=f"({epoch}) Train loss: {(sum_loss / (i_batch + 1)):.2f}: Class {class_name} ")
-
-            # cas_model_name          = 'cas' + base_model_name[3:]
-                
-            torch.save(fas_model.state_dict(), os.path.join('./test_weights/', f"{base_model_name}{class_name}.pckl"))
-            
-            if args.visualize:
-                visualizer.plot_loss(l2_loss, n_iter, loss_name='l2_loss')
-                # visualizer.plot_loss(ssim_loss, n_iter, loss_name='ssim_loss')
-                # visualizer.plot_loss(segment_loss, n_iter, loss_name='focal_loss')
-                
-                visualizer.visualize_image_batch(input_batch, n_iter, image_name='fas_input_batch')
-                visualizer.visualize_image_batch(aug_batch, n_iter, image_name='cas_input')
-                visualizer.visualize_image_batch(groudtruth_mask, n_iter, image_name='fas_mask_target')
-                visualizer.visualize_image_batch(cas_output, n_iter, image_name='out_cas')
-                visualizer.visualize_image_batch(input_batch_fas, n_iter, image_name='fas_input')
-                visualizer.visualize_image_batch(fas_output, n_iter, image_name='out_fas')
-                
-                # The model is being loaded twice in memory, could just pass it to the test_seg_model_class
-                try:
-                    test_seg_model(
-                        cas_model,
-                        class_name,
-                        args.data_path,
-                        epoch,
-                        args.val_gpu_id,
-                        fas_model,
-                        visualizer
-                    )
-                    # results_val             = subprocess.check_output(f'python3 ./main/test_seg_model.py --gpu_id {args.val_gpu_id} --model_name {cas_model_name}{class_name} --data_path {args.data_path} --checkpoint_path {args.cas_model_path} --both_model 1 --obj_list_all {class_name}', shell=True)
-                    # results_val             = decode_output(results_val)
-                    # curr_pixel_ap,_           = find_values(results_val, 'AP')
-                    # curr_pixel_auc,index      = find_values(results_val, 'AUC')
-                    # curr_image_auc,_          = find_values(results_val[index:], 'AUC')
+                        epoch=f"({epoch+1}) Class: {class_name} | L2 loss: {(sum_l2_loss / (i_batch + 1)):.2f} | SSIM loss: {(sum_ssim_loss / (i_batch + 1)):.2f} | L2 and SSIM loss: {(sum_loss / (i_batch + 1)):.2f} ")
                     
-                    # if ((curr_pixel_auc+curr_pixel_ap+curr_image_auc)/3)>=((best_pix_ap+best_pix_auc+best_img_auc)/3):
-                        
-                    #     torch.save(fas_model.state_dict(), os.path.join("./best_weights_model_2/", base_model_name+class_name+".pckl"))
-                    #     best_pix_ap        = curr_pixel_ap
-                    #     best_pix_auc       = curr_pixel_auc
-                    #     best_img_auc       = curr_image_auc
-
-                        
-                    # print(f"Test for epoch {epoch}: Class {results_val[7]} Pixel AP {curr_pixel_ap:.2f} Pixel AUC {curr_pixel_auc:.2f} Image AUC {curr_image_auc:.2f}")               
-
-                except Exception as e:
-                    print(e)
-
-                n_iter +=1
+                # time_batches = np.array(time_batches)
+                # time_evals = np.array(time_evals)
+                # time_backward = np.array(time_backward)
+                # time_losses = np.array(time_losses)
+                # print(f"Time avg for batch: {time_batches.mean()} | eval: {time_evals.mean()} | back: {time_backward.mean()} | losses: {time_losses.mean()}")
+                
+            # start = time.time()
+            
+            # torch.save(fas_model.state_dict(), os.path.join('./test_weights/', f"{base_model_name}{class_name}.pckl"))
+            
+            
+            # end = time.time()
+            # print(f"Time spent to save model: {(end - start) *  1000}")
+            
+            # avg_loss = sum_loss / len(dataloader)
+            torch.save(fas_model.state_dict(), os.path.join(args.best_model_save_path, f"{base_model_name}{class_name}_{epoch}.pckl"))
+            
+            # print(f"Train loss avg: {avg_loss:.2f}", end=" ")
+            
+            visualizer.plot_loss(sum_l2_loss / len(dataloader), epoch, loss_name='fas_l2_loss')
+            # visualizer.plot_loss(ssim_loss, epoch, loss_name='ssim_loss')
+            # visualizer.plot_loss(segment_loss, epoch, loss_name='focal_loss')
+            
+            # visualizer.visualize_image_batch(aug_batch, epoch, image_name='fas_cas_input')
+            # visualizer.visualize_image_batch(cas_output, epoch, image_name='fas_cas_output')
+            # visualizer.visualize_image_batch(input_batch, epoch, image_name='fas_input_batch')
+            visualizer.visualize_image_batch(aug_batch, epoch, image_name='fas_input')
+            visualizer.visualize_image_batch(groudtruth_mask, epoch, image_name='fas_mask_target')
+            visualizer.visualize_image_batch(fas_output, epoch, image_name='fas_output')
+            
+            ap, ap_pixel, auroc, auroc_pixel = test_seg_model(
+                fas_model,
+                class_name,
+                args.data_path,
+                epoch + 1,
+                args.val_gpu_id,
+                None,
+                visualizer
+            )
+            
+            print(f"(test) AP: {ap:.2f} | AP pixel: {ap_pixel:.2f} | AUROC: {auroc:.2f} AUROC pixel: {auroc_pixel:.2f}")
 
             scheduler.step()
+            
+            # if avg_loss < last_best_loss and abs(avg_loss - last_best_epoch) >= 1e-3:
+            #     last_best_loss = avg_loss
+            #     last_best_epoch = epoch + 1
+            # elif (epoch + 1) - last_best_epoch >= 15:
+            #     break
 
             
 
@@ -181,6 +211,7 @@ if __name__=="__main__":
     parser.add_argument('--anomaly_type', dest='anom_choices', required=False, help='0 -- for superpixel, 1 -- for perlin and [0,1] for both', nargs='+', type=int, default=[0,1])
     parser.add_argument('--cas_model_path', action='store', type=str, required=True)
     parser.add_argument('--datatype', action='store', type=str, required=True)
+    parser.add_argument('--best_model_save_path', action='store', type=str, required=True)
 
     args = parser.parse_args()
     gpu_ids     =   args.train_gpu_id.split(',')

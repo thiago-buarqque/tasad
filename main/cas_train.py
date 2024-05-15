@@ -39,7 +39,7 @@ def train_on_device(args):
         visualizer      = TensorboardVisualizer(log_dir=os.path.join(args.log_path, wght_file_name+"/"))    
         cas_model       = Seg_Network(in_channels=3, out_channels=1)
         cas_params      = Seg_Network.get_n_params(cas_model)/1000000 
-        print("Number of parmeters of CAS model: ", cas_params, " million")
+        print("Number of parameters of CAS model: ", cas_params, " million")
 
         cas_model.cuda(cuda_id)
 
@@ -55,12 +55,14 @@ def train_on_device(args):
         loss_ssim       = SSIM(args.gpu_id)
         
         dataset         = MVTecTrainDataset(args.data_path+class_name+'/train' , args.anomaly_source_path, resize_shape=[256, 256])
-        dataloader      = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=12) # 16
+        dataloader      = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=0) # 16
 
         n_iter          = 0
 
         for epoch in range(args.epochs):            
             sum_loss = 0
+            sum_ssim_loss = 0
+            sum_l2_loss = 0
 
             widgets = [
                       DynamicMessage('epoch'),
@@ -79,7 +81,12 @@ def train_on_device(args):
                     prediction             = cas_model(aug_train_batch)
 
                     l2_loss                 = loss_l2(prediction,anomaly_mask_batch)
+                    
+                    sum_l2_loss += l2_loss
+                    
                     ssim_loss               = loss_ssim(prediction, anomaly_mask_batch)
+                    
+                    sum_ssim_loss += ssim_loss
 
                     loss                    = l2_loss + ssim_loss
                     
@@ -93,32 +100,34 @@ def train_on_device(args):
                     
                     progress_bar.update(
                         i_batch, 
-                        epoch=f"({epoch}) Train loss: {(sum_loss / (i_batch + 1)):.2f}: Class {class_name} ")
+                        epoch=f"({epoch+1}) Class: {class_name} | L2 loss: {(sum_l2_loss / (i_batch + 1)):.2f} | SSIM loss: {(sum_ssim_loss / (i_batch + 1)):.2f} | L2 and SSIM loss: {(sum_loss / (i_batch + 1)):.2f} ")
 
-            if args.visualize:
-                visualizer.plot_loss(l2_loss, n_iter, loss_name='cas_l2_loss')
-                visualizer.plot_loss(ssim_loss, n_iter, loss_name='cas_ssim_loss')
+            torch.save(cas_model.state_dict(), os.path.join(args.checkpoint_path, f"{wght_file_name}.pckl"))
+            
+            torch.save(cas_model.state_dict(), os.path.join(args.best_model_save_path, f"{wght_file_name}_{epoch}.pckl"))
+            
+            visualizer.plot_loss(sum_l2_loss / len(dataloader), n_iter, loss_name='cas_l2_loss')
+            visualizer.plot_loss(sum_ssim_loss / len(dataloader), n_iter, loss_name='cas_ssim_loss')
+            visualizer.plot_loss(sum_loss / len(dataloader), n_iter, loss_name='cas_l2_and_ssim_loss')
 
-                visualizer.visualize_image_batch(train_batch, n_iter, image_name='cas_sample_input')
-                visualizer.visualize_image_batch(aug_train_batch, n_iter, image_name='cas_sample_augmented')
-                visualizer.visualize_image_batch(anomaly_mask_batch, n_iter, image_name='cas_sample_gt')
-                visualizer.visualize_image_batch(prediction, n_iter, image_name='cas_out_pred')
+            visualizer.visualize_image_batch(train_batch, n_iter, image_name='cas_sample_input')
+            visualizer.visualize_image_batch(aug_train_batch, n_iter, image_name='cas_sample_augmented')
+            visualizer.visualize_image_batch(anomaly_mask_batch, n_iter, image_name='cas_sample_gt')
+            visualizer.visualize_image_batch(prediction, n_iter, image_name='cas_out_pred')
 
-                torch.save(cas_model.state_dict(), os.path.join(args.checkpoint_path, f"{wght_file_name}.pckl"))
+            try:
+                test_seg_model(
+                    cas_model,
+                    class_name,
+                    args.data_path,
+                    epoch + 1,
+                    args.gpu_id,
+                    None,
+                    visualizer
+                )
 
-                try:
-                    test_seg_model(
-                        cas_model,
-                        class_name,
-                        args.data_path,
-                        epoch,
-                        args.gpu_id,
-                        None,
-                        visualizer
-                    )
-
-                except Exception as e:
-                    print(e)
+            except Exception as e:
+                print(e)
 
             n_iter +=1
 

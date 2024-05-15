@@ -19,6 +19,7 @@ class DataProcessor(Dataset):
     def __init__(
         self,
         root_dir,
+        class_name,
         anomaly_source_path,anom_choices=[0,1],
         resize_shape=None,
         include_norm_imgs=0,
@@ -31,6 +32,7 @@ class DataProcessor(Dataset):
         """
         self.root_dir = root_dir
         self.resize_shape=resize_shape
+        self.class_name = class_name
 
         self.image_paths = sorted(glob.glob(root_dir+ f"*.{datatype}")) #"*.png")) ### change /*/*.jpg
         
@@ -69,7 +71,6 @@ class DataProcessor(Dataset):
 
         return aug
 
-    # TODO: This can be done once before training. Right now is being done for every image on every epoch
     def augment_image(self, image, anomaly_source_path, anomaly_type=[0,1]):
         aug = self.randAugmenter()
         
@@ -159,6 +160,14 @@ class DataProcessor(Dataset):
             
         ### new anomaly end
 
+        # Mover isso para o inicio
+        # Mover isso para o inicio
+        # Mover isso para o inicio
+        # Mover isso para o inicio
+        # Mover isso para o inicio
+        # Mover isso para o inicio
+        # Mover isso para o inicio
+        # Mover isso para o inicio
         no_anomaly = torch.rand(1).numpy()[0]
         if no_anomaly > 0.5 or anomaly_type==2:
             image = image #.astype(np.float32)/255
@@ -201,9 +210,9 @@ class DataProcessor(Dataset):
 
             return augmented_image, msk, np.array([has_anomaly], dtype=np.float32)
 
-    # TODO: This can be done once before training. Right now is being done for every image on every epoch
     def transform_image(self, image_path, anomaly_source_path):
         image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, dsize=(self.resize_shape[1], self.resize_shape[0]))
         
         ### riz change 
@@ -242,6 +251,9 @@ class DataProcessor(Dataset):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path) 
             
+        if image.shape[0] == 4:
+            image = image[:, :3, :, :]
+            
         image_transposed = image.transpose(1, 2, 0)
         
         if image_transposed.max() > 1.0:
@@ -251,11 +263,8 @@ class DataProcessor(Dataset):
         fig.patch.set_facecolor('black')
         ax.set_facecolor('black')
 
-        # Display the image
         if image_transposed.shape[2] == 1:
             image_transposed = np.repeat(image.squeeze(), 3).reshape((image_transposed.shape[0], image_transposed.shape[1], 3))
-            # image_squeezed = np.squeeze(image_transposed)
-            # ax.imshow(image_squeezed, cmap='gray', vmin=0.0, vmax=1.0)
 
         ax.imshow(image_transposed)
 
@@ -281,11 +290,19 @@ class DataProcessor(Dataset):
         image, augmented_image, anomaly_mask, has_anomaly = \
             self.transform_image(path, anomaly_path)
 
-        self.__save_image(image, path, path_prefix="./processed_data/original")
+        # self.__save_image(image, path, path_prefix="./processed_data/original")
 
-        # if has_anomaly == 1.0:
-        self.__save_image(augmented_image, path, path_prefix="./processed_data/augmented")
-        self.__save_image(anomaly_mask, path, path_prefix="./processed_data/anomaly")
+        # self.__save_image(augmented_image, path, path_prefix="./processed_data/augmented")
+        
+        path = "/" + path.split("/")[-1]
+        
+        path = path.replace(".png", ".jpg")
+        
+        if has_anomaly == 1.0:
+            self.__save_image(augmented_image, path, path_prefix=f"./processed_data/{self.class_name}/test/with_anomaly")
+            self.__save_image(anomaly_mask, path, path_prefix=f"./processed_data/{self.class_name}/ground_truth/with_anomaly")
+        else:
+            self.__save_image(augmented_image, path, path_prefix=f"./processed_data/{self.class_name}/test/good")
 
         return {
             'image': image, 
@@ -302,7 +319,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--data_path', action='store', type=str, required=True)
-    parser.add_argument('--anomaly_source_path', action='store', type=str, default='', required=False)
+    parser.add_argument('--anomaly_source_path', action='store', type=str, default='', required=True)
     parser.add_argument('--class_name', action='store', type=str,nargs='+', required=True)
 
     args = parser.parse_args()
@@ -319,8 +336,9 @@ if __name__=="__main__":
     for class_name in args.class_name[0].split(","):
         dataset = \
             DataProcessor(
-                args.data_path + class_name + '/train',
-                args.anomaly_source_path, 
+                root_dir=args.data_path + class_name + '/train',
+                anomaly_source_path=args.anomaly_source_path, 
+                class_name=class_name,
                 resize_shape=[256, 256]
             )
             

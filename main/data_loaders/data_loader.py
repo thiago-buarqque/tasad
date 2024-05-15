@@ -70,7 +70,6 @@ class MVTecTrainDataset(Dataset):
 
         return aug
 
-    # TODO: This can be done once before training. Right now is being done for every image on every epoch
     def augment_image(self, image, anomaly_source_path, anomaly_type=[0,1]):
         aug = self.randAugmenter()
         
@@ -198,7 +197,6 @@ class MVTecTrainDataset(Dataset):
                 has_anomaly=0.0
             return augmented_image, msk, np.array([has_anomaly],dtype=np.float32)
 
-    # TODO: This can be done once before training. Right now is being done for every image on every epoch
     def transform_image(self, image_path, anomaly_source_path):
         image = cv2.imread(image_path)
         image = cv2.resize(image, dsize=(self.resize_shape[1], self.resize_shape[0]))
@@ -227,7 +225,6 @@ class MVTecTrainDataset(Dataset):
         
         return image, augmented_image, anomaly_mask, has_anomaly
 
-    # TODO: I think it could return the same image more than once
     def __getitem__(self, idx):
         idx = torch.randint(0, len(self.image_paths), (1,)).item()
         
