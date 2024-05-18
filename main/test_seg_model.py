@@ -142,11 +142,11 @@ def test_seg_model(
     obj_ap_image_list.append(ap)
         
     if visualizer != None:
-        prefix = "fas" if fas_model != None else "cas"
-        visualizer.plot_performance(score_val=ap_pixel, n_iter=epoch, metric_name=f"{prefix}_T_AP_pixel")
-        visualizer.plot_performance(score_val=auroc_pixel, n_iter=epoch, metric_name=f"{prefix}_T_AUROC_pixel")
-        visualizer.plot_performance(score_val=auroc, n_iter=epoch, metric_name=f"{prefix}_T_AUROC")
-        visualizer.plot_performance(score_val=ap, n_iter=epoch, metric_name=f"{prefix}_T_AP")
+        # prefix = "fas" if fas_model != None else "cas"
+        visualizer.plot_performance(score_val=ap_pixel, n_iter=epoch, metric_name=f"test_AP_pixel")
+        visualizer.plot_performance(score_val=auroc_pixel, n_iter=epoch, metric_name=f"test_AUROC_pixel")
+        visualizer.plot_performance(score_val=auroc, n_iter=epoch, metric_name=f"test_AUROC")
+        visualizer.plot_performance(score_val=ap, n_iter=epoch, metric_name=f"test_AP")
     
     print(f"{datetime.now()} Test for epoch {epoch}: Class {class_name} Pixel AP {ap_pixel:.2f} Pixel AUC {auroc_pixel:.2f} Image AUC {auroc:.2f} Image AP {ap:.2f}")
     
@@ -173,19 +173,19 @@ if __name__=="__main__":
     class_name = obj_list[0]
 
     with torch.cuda.device(args.gpu_id):
-        cas_model   = Seg_Network(in_channels=3, out_channels=1)
-        cas_model.load_state_dict(torch.load(args.checkpoint_path + args.model_name+class_name+".pckl", map_location=f'cuda:{args.gpu_id}'))
-        cas_model.cuda(args.gpu_id)
+        # cas_model   = Seg_Network(in_channels=3, out_channels=1)
+        # cas_model.load_state_dict(torch.load(args.checkpoint_path + args.model_name+class_name+".pckl", map_location=f'cuda:{args.gpu_id}'))
+        # cas_model.cuda(args.gpu_id)
         
         fas_model = Seg_Network(in_channels=3, out_channels=1)
         fas_model.load_state_dict(torch.load(args.checkpoint_path+'fas'+args.model_name[3:]+class_name+'.pckl', map_location=f'cuda:{args.gpu_id}'))
         fas_model.cuda(args.gpu_id)
 
         test_seg_model(
-            cas_model,
+            fas_model,
             class_name,
             args.data_path, 
             -1,
             args.gpu_id,
-            fas_model
+            None
         )

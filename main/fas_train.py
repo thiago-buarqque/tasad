@@ -67,8 +67,8 @@ def train_on_device(args):
         dataset     = MVTecTrainDataset(f'{args.data_path}{class_name}/train/', args.anomaly_source_path, args.anom_choices, resize_shape=[256, 256],include_norm_imgs=1, datatype=f'{args.datatype}')
         dataloader  = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=12) # 16
 
-        # last_best_loss = 1e10
-        # last_best_epoch = 1
+        last_best_loss = 1e10
+        last_best_epoch = 1
 
         for epoch in tqdm(range(args.epochs)):
             
@@ -151,13 +151,18 @@ def train_on_device(args):
             # end = time.time()
             # print(f"Time spent to save model: {(end - start) *  1000}")
             
-            # avg_loss = sum_loss / len(dataloader)
-            torch.save(fas_model.state_dict(), os.path.join(args.best_model_save_path, f"{base_model_name}{class_name}_{epoch}.pckl"))
+            avg_loss = sum_loss / len(dataloader)
+            if avg_loss < last_best_loss and abs(avg_loss - last_best_epoch) >= 1e-3:
+                last_best_loss = avg_loss
+                last_best_epoch = epoch + 1
+                
+                torch.save(fas_model.state_dict(), os.path.join(args.best_model_save_path, f"{base_model_name}{class_name}.pckl"))
+                
             
             # print(f"Train loss avg: {avg_loss:.2f}", end=" ")
             
             visualizer.plot_loss(sum_l2_loss / len(dataloader), epoch, loss_name='fas_l2_loss')
-            # visualizer.plot_loss(ssim_loss, epoch, loss_name='ssim_loss')
+            visualizer.plot_loss(sum_ssim_loss / len(dataloader), epoch, loss_name='ssim_loss')
             # visualizer.plot_loss(segment_loss, epoch, loss_name='focal_loss')
             
             # visualizer.visualize_image_batch(aug_batch, epoch, image_name='fas_cas_input')
@@ -180,10 +185,6 @@ def train_on_device(args):
             print(f"(test) AP: {ap:.2f} | AP pixel: {ap_pixel:.2f} | AUROC: {auroc:.2f} AUROC pixel: {auroc_pixel:.2f}")
 
             scheduler.step()
-            
-            # if avg_loss < last_best_loss and abs(avg_loss - last_best_epoch) >= 1e-3:
-            #     last_best_loss = avg_loss
-            #     last_best_epoch = epoch + 1
             # elif (epoch + 1) - last_best_epoch >= 15:
             #     break
 

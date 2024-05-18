@@ -37,7 +37,10 @@ class DataProcessor(Dataset):
         self.image_paths = sorted(glob.glob(root_dir+ f"*.{datatype}")) #"*.png")) ### change /*/*.jpg
         
         if len(self.image_paths) == 0: 
+            # print(f"Looking on {root_dir}/*/*.{datatype}")
             self.image_paths = sorted(glob.glob(root_dir+ f"/*/*.{datatype}"))
+            
+        # print(f"Found {len(self.image_paths)}")
         
         # print(f"Image paths: {self.image_paths}")
 
@@ -72,6 +75,11 @@ class DataProcessor(Dataset):
         return aug
 
     def augment_image(self, image, anomaly_source_path, anomaly_type=[0,1]):
+        no_anomaly = torch.rand(1).numpy()[0]
+        if no_anomaly > 0.5 or anomaly_type==2:
+            # image = image #.astype(np.float32)/255
+            return image, np.expand_dims(np.zeros_like(image[:,:,0], dtype=np.float32),axis=2), np.array([0.0],dtype=np.float32)
+        
         aug = self.randAugmenter()
         
         perlin_scale = 6
@@ -160,61 +168,47 @@ class DataProcessor(Dataset):
             
         ### new anomaly end
 
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        # Mover isso para o inicio
-        no_anomaly = torch.rand(1).numpy()[0]
-        if no_anomaly > 0.5 or anomaly_type==2:
-            image = image #.astype(np.float32)/255
-            return image, np.expand_dims(np.zeros_like(image[:,:,0], dtype=np.float32),axis=2), np.array([0.0],dtype=np.float32)
-        else:
-            ### added for new anomaly
-            #augmented_image = augmented_image.astype(np.float32)
-            try:
-                augmented_image = augmented_image.astype(np.float32)
-            except: pass
+        ### added for new anomaly
+        #augmented_image = augmented_image.astype(np.float32)
+        try:
+            augmented_image = augmented_image.astype(np.float32)
+        except: pass
+            
+        msk = (msk).astype(np.float32)
+        
+        if len(msk.shape)==2:
+            # dim    =     msk.shape[0] 
+            msk    =     np.expand_dims(msk, axis=2)
+
+        ### added for new anomaly [Segmentation]
+        dec_brig   = 1
+        
+        if self.anomaly_type==[0]:
+            patch_aug   =  msk * augmented_image *dec_brig
+            patch_img   =  msk * image
+            ssim_value  =  ssim(patch_aug, patch_img, multichannel=True) 
+            if ssim_value>0.85 and self.anomaly_type==[0,1]:
+                #msk             = msk*0.0
+                #augmented_image = image 
+                perlin_noise                = rand_perlin_2d_np((self.resize_shape[0], self.resize_shape[1]), (perlin_scalex, perlin_scaley))
+                anomaly_img_augmented       = anomaly_source_img
+                augmented_image,perlin_thr  = per_anomaly(perlin_noise, anomaly_img_augmented, image)
+                augmented_image             = augmented_image.astype(np.float32)
+                msk                         = (perlin_thr).astype(np.float32)
                 
-            msk = (msk).astype(np.float32)
-            
-            if len(msk.shape)==2:
-                # dim    =     msk.shape[0] 
-                msk    =     np.expand_dims(msk, axis=2)
+            #augmented_image         = msk * augmented_image*dec_brig + (1-msk)*image
+        
+        has_anomaly = 1.0
 
-            ### added for new anomaly [Segmentation]
-            dec_brig   = 1
-            
-            if self.anomaly_type==[0]:
-                patch_aug   =  msk * augmented_image *dec_brig
-                patch_img   =  msk * image
-                ssim_value  =  ssim(patch_aug, patch_img, multichannel=True) 
-                if ssim_value>0.85 and self.anomaly_type==[0,1]:
-                    #msk             = msk*0.0
-                    #augmented_image = image 
-                    perlin_noise                = rand_perlin_2d_np((self.resize_shape[0], self.resize_shape[1]), (perlin_scalex, perlin_scaley))
-                    anomaly_img_augmented       = anomaly_source_img
-                    augmented_image,perlin_thr  = per_anomaly(perlin_noise, anomaly_img_augmented, image)
-                    augmented_image             = augmented_image.astype(np.float32)
-                    msk                         = (perlin_thr).astype(np.float32)
-                   
-                #augmented_image         = msk * augmented_image*dec_brig + (1-msk)*image
-            
-            has_anomaly = 1.0
+        if np.sum(msk) == 0:
+            has_anomaly=0.0
 
-            if np.sum(msk) == 0:
-                has_anomaly=0.0
-
-            return augmented_image, msk, np.array([has_anomaly], dtype=np.float32)
+        return augmented_image, msk, np.array([has_anomaly], dtype=np.float32)
 
     def transform_image(self, image_path, anomaly_source_path):
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, dsize=(self.resize_shape[1], self.resize_shape[0]))
-        
         ### riz change 
         '''
         do_aug_orig = torch.rand(1).numpy()[0] > 0.7
@@ -229,6 +223,8 @@ class DataProcessor(Dataset):
         augmented_image = np.transpose(augmented_image, (2, 0, 1))
         
         image = np.transpose(image, (2, 0, 1))
+        
+        return image, image, None, False
         
         ### added for new anomaly 
         if len(anomaly_mask.shape)==2:
@@ -259,23 +255,25 @@ class DataProcessor(Dataset):
         if image_transposed.max() > 1.0:
             image_transposed = image_transposed.astype(np.float32) / 255.0
 
-        fig, ax = plt.subplots()
-        fig.patch.set_facecolor('black')
-        ax.set_facecolor('black')
+        # fig, ax = plt.subplots()
+        # fig.patch.set_facecolor('black')
+        # ax.set_facecolor('black')
 
         if image_transposed.shape[2] == 1:
             image_transposed = np.repeat(image.squeeze(), 3).reshape((image_transposed.shape[0], image_transposed.shape[1], 3))
 
-        ax.imshow(image_transposed)
+        plt.imsave(file_path, image_transposed)
+
+        # ax.imshow(image_transposed)
 
         # Turn off the axes
-        ax.axis('off')
+        # ax.axis('off')
 
         # Save the figure
-        plt.savefig(file_path, bbox_inches='tight', pad_inches=0, facecolor='black', dpi=300, transparent=False)
+        # plt.savefig(file_path, bbox_inches='tight', pad_inches=0, facecolor='black', transparent=False)
 
         # Close the plot to free memory
-        plt.close(fig)
+        # plt.close(fig)
 
     def __len__(self):
         return len(self.image_paths)
@@ -294,15 +292,17 @@ class DataProcessor(Dataset):
 
         # self.__save_image(augmented_image, path, path_prefix="./processed_data/augmented")
         
-        path = "/" + path.split("/")[-1]
-        
+        # path = "/" + path.split("/")[-1]
+        # print(path)
+        path = path.replace("./data", "")
+        path = path.replace("./anomaly", "")
         path = path.replace(".png", ".jpg")
         
         if has_anomaly == 1.0:
-            self.__save_image(augmented_image, path, path_prefix=f"./processed_data/{self.class_name}/test/with_anomaly")
-            self.__save_image(anomaly_mask, path, path_prefix=f"./processed_data/{self.class_name}/ground_truth/with_anomaly")
+            self.__save_image(augmented_image, path, path_prefix=f"./mvtec-256/{self.class_name}/test/with_anomaly")
+            self.__save_image(anomaly_mask, path, path_prefix=f"./mvtec-256/{self.class_name}/ground_truth/with_anomaly")
         else:
-            self.__save_image(augmented_image, path, path_prefix=f"./processed_data/{self.class_name}/test/good")
+            self.__save_image(augmented_image, path, path_prefix=f"./anomaly-256")
 
         return {
             'image': image, 
@@ -334,12 +334,14 @@ if __name__=="__main__":
     ]
 
     for class_name in args.class_name[0].split(","):
+        # print(f"Root: {args.data_path + class_name} anomaly: {args.anomaly_source_path}")
         dataset = \
             DataProcessor(
-                root_dir=args.data_path + class_name + '/train',
+                root_dir=args.data_path + class_name + "/",
                 anomaly_source_path=args.anomaly_source_path, 
                 class_name=class_name,
-                resize_shape=[256, 256]
+                resize_shape=[256, 256],
+                datatype="jpg"
             )
             
         with ProgressBar(widgets=widgets, max_value=dataset.__len__()) as progress_bar:

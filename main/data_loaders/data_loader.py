@@ -199,6 +199,7 @@ class MVTecTrainDataset(Dataset):
 
     def transform_image(self, image_path, anomaly_source_path):
         image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, dsize=(self.resize_shape[1], self.resize_shape[0]))
         
         ### riz change 
