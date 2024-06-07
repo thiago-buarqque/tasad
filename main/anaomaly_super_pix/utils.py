@@ -214,7 +214,7 @@ def point_of_interest(residual_img):
     return col_loc, row_loc, start_position, end_position
 
 def draw_bbox_str_end(orig_img,col_idx=0,row_idx=0,width=100,height=100,
-save_fig=False,color=(255,0,0),img_indx =0,path_to_save='./'):
+save_fig=False,color=(0,0,255),img_indx =0,path_to_save='./'):
     
     # Blue color in BGR
     #color = (255, 0, 0)
@@ -235,7 +235,7 @@ save_fig=False,color=(255,0,0),img_indx =0,path_to_save='./'):
     radius  = 30
     
     # Blue color in BGR
-    color = (255, 0, 0)
+    color = (0, 0, 255)
     
     # Line thickness of 2 px
     thickness = 2

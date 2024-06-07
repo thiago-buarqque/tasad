@@ -49,14 +49,14 @@ def train_on_device(args):
         
         fas_model.cuda(cuda_id)
         
-        if args.checkpoint_fas_weights=='':
-            fas_model.apply(weights_init)
-        else:
+        if args.checkpoint_fas_weights != '':
             fas_model.load_state_dict(torch.load(f'{args.checkpoint_fas_weights}{class_name}.pckl', map_location=f'{cuda_map}'))
+        else:
+            fas_model.apply(weights_init)
    
 
         optimizer = torch.optim.Adam([{"params": fas_model.parameters(), "lr": args.lr}])
-        scheduler = optim.lr_scheduler.MultiStepLR(optimizer,[args.epochs*0.8,args.epochs*0.9],gamma=0.2, last_epoch=-1)
+        scheduler = optim.lr_scheduler.MultiStepLR(optimizer,[args.epochs*0.3,args.epochs*0.5, args.epochs*0.8],gamma=0.1, last_epoch=-1)
 
 
         loss_l2 = torch.nn.modules.loss.MSELoss()
@@ -65,7 +65,7 @@ def train_on_device(args):
 
         ### dataset 
         dataset     = MVTecTrainDataset(f'{args.data_path}{class_name}/train/', args.anomaly_source_path, args.anom_choices, resize_shape=[256, 256],include_norm_imgs=1, datatype=f'{args.datatype}')
-        dataloader  = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=12) # 16
+        dataloader  = DataLoader(dataset, batch_size=args.bs, shuffle=True, num_workers=4) # 16
 
         last_best_loss = 1e10
         last_best_epoch = 1
@@ -77,7 +77,7 @@ def train_on_device(args):
             sum_l2_loss = 0
 
             widgets = [
-                      DynamicMessage('epoch'),
+                      DynamicMessage('train'),
                       Bar(marker='=', left='[', right=']'),
                 ' ',  ETA(),
             ]
@@ -103,17 +103,17 @@ def train_on_device(args):
                     # start_loss = time.time()
                     l2_loss             = loss_l2(fas_output,groudtruth_mask)
                     
-                    sum_l2_loss += l2_loss
+                    sum_l2_loss += l2_loss.cpu()
                     
                     ssim_loss           = loss_ssim(fas_output, groudtruth_mask)
                     
-                    sum_ssim_loss += ssim_loss
+                    sum_ssim_loss += ssim_loss.cpu()
                     
                     #segment_loss        = loss_focal(fas_output, groudtruth_mask) 
                     # loss                = l2_loss  #+ ssim_loss #+ segment_loss
                     loss = l2_loss + ssim_loss
                     
-                    sum_loss += loss
+                    sum_loss += loss.cpu()
                     # end_loss = time.time()
                     
                     # time_losses.append(end_loss - start_loss)
@@ -135,7 +135,7 @@ def train_on_device(args):
                     
                     progress_bar.update(
                         i_batch, 
-                        epoch=f"({epoch+1}) Class: {class_name} | L2 loss: {(sum_l2_loss / (i_batch + 1)):.2f} | SSIM loss: {(sum_ssim_loss / (i_batch + 1)):.2f} | L2 and SSIM loss: {(sum_loss / (i_batch + 1)):.2f} ")
+                        train=f"({epoch+1}) Class: {class_name} | L2 loss: {(sum_l2_loss / (i_batch + 1)):.2f} | SSIM loss: {(sum_ssim_loss / (i_batch + 1)):.2f} | L2 and SSIM loss: {(sum_loss / (i_batch + 1)):.2f} ")
                     
                 # time_batches = np.array(time_batches)
                 # time_evals = np.array(time_evals)
@@ -149,28 +149,21 @@ def train_on_device(args):
             
             
             # end = time.time()
-            # print(f"Time spent to save model: {(end - start) *  1000}")
-            
-            avg_loss = sum_loss / len(dataloader)
-            if avg_loss < last_best_loss and abs(avg_loss - last_best_epoch) >= 1e-3:
-                last_best_loss = avg_loss
-                last_best_epoch = epoch + 1
-                
-                torch.save(fas_model.state_dict(), os.path.join(args.best_model_save_path, f"{base_model_name}{class_name}.pckl"))
-                
+            # print(f"Time spent to save model: {(end - start) *  1000}")            
             
             # print(f"Train loss avg: {avg_loss:.2f}", end=" ")
+            del sample_batched
             
             visualizer.plot_loss(sum_l2_loss / len(dataloader), epoch, loss_name='fas_l2_loss')
-            visualizer.plot_loss(sum_ssim_loss / len(dataloader), epoch, loss_name='ssim_loss')
+            visualizer.plot_loss(sum_ssim_loss / len(dataloader), epoch, loss_name='fas_ssim_loss')
             # visualizer.plot_loss(segment_loss, epoch, loss_name='focal_loss')
             
             # visualizer.visualize_image_batch(aug_batch, epoch, image_name='fas_cas_input')
             # visualizer.visualize_image_batch(cas_output, epoch, image_name='fas_cas_output')
             # visualizer.visualize_image_batch(input_batch, epoch, image_name='fas_input_batch')
-            visualizer.visualize_image_batch(aug_batch, epoch, image_name='fas_input')
-            visualizer.visualize_image_batch(groudtruth_mask, epoch, image_name='fas_mask_target')
-            visualizer.visualize_image_batch(fas_output, epoch, image_name='fas_output')
+            visualizer.visualize_image_batch(aug_batch.cpu(), epoch, image_name='fas_input')
+            visualizer.visualize_image_batch(groudtruth_mask.cpu(), epoch, image_name='fas_mask_target')
+            visualizer.visualize_image_batch(fas_output.cpu(), epoch, image_name='fas_output')
             
             ap, ap_pixel, auroc, auroc_pixel = test_seg_model(
                 fas_model,
@@ -179,14 +172,24 @@ def train_on_device(args):
                 epoch + 1,
                 args.val_gpu_id,
                 None,
-                visualizer
+                visualizer,
+                print_logs=False
             )
+            
+            fas_model.train()
             
             print(f"(test) AP: {ap:.2f} | AP pixel: {ap_pixel:.2f} | AUROC: {auroc:.2f} AUROC pixel: {auroc_pixel:.2f}")
 
             scheduler.step()
-            # elif (epoch + 1) - last_best_epoch >= 15:
-            #     break
+            
+            avg_loss = sum_loss / len(dataloader)
+            if avg_loss < last_best_loss and last_best_loss - avg_loss >= 0.01:
+                last_best_loss = avg_loss
+                last_best_epoch = epoch + 1
+                
+                torch.save(fas_model.state_dict(), os.path.join(args.best_model_save_path, f"{base_model_name}{class_name}.pckl"))
+            elif (epoch + 1) - last_best_epoch >= 50:
+                break
 
             
 

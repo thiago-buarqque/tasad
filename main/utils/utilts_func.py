@@ -281,7 +281,7 @@ save_fig=False,color=(255,0,0),img_indx =0,path_to_save='./'):
         #pass
     
     # Blue color in BGR
-    color = (255, 0, 0)
+    color = (0, 0, 255)
     
     # Line thickness of 2 px
     thickness = 2
@@ -422,7 +422,7 @@ def make_bbox_in_range(point):
 
 
 def draw_bbox_str_end_v2(orig_img,col_idx=0,row_idx=0,width=100,height=100,
-save_fig=False,color=(255,0,0),img_indx =0,path_to_save='./',SSIM_value=0,ssim_th=0):
+save_fig=False,color=(0,0, 255),img_indx =0,path_to_save='./',SSIM_value=0,ssim_th=0):
     
     if SSIM_value<=ssim_th:
         # Blue color in BGR
@@ -446,7 +446,7 @@ save_fig=False,color=(255,0,0),img_indx =0,path_to_save='./',SSIM_value=0,ssim_t
         radius  = 30
         
         # Blue color in BGR
-        color = (255, 0, 0)
+        color = (0, 0, 255)
         
         # Line thickness of 2 px
         thickness = 2
@@ -734,7 +734,7 @@ def float_int8_color(img):
     #if (len(img.shape)==2): img   =   cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
     if  (len(img.shape)==2) or (img.shape[-1]==1): 
 
-        img   =   cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) 
+        img   =   cv2.cvtColor(img, cv2.COLOR_GRAY2RGB) 
         #img   =   cv2.cvtColor(img, cv2.cv2.COLOR_BGR2HSV) 
 
     return img

@@ -26,6 +26,7 @@ class MVTecTestDataset(Dataset):
     # TODO: This can be done once. Right now is being done for every image on every model test
     def transform_image(self, image_path, mask_path):
         image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         ## changed ny riz 
         #mask_path = None   
