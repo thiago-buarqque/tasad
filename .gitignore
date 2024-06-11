@@ -170,3 +170,8 @@ cython_debug/
 /best_weights_*
 /test_weights
 **/__pycache__/*.pyc
+/test_weights
+/old_logs
+/invalid-anomalies
+/checkpoints
+.vscode
